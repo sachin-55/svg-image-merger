@@ -9,29 +9,21 @@ import { bigSVG, smallSVG } from "./svgfiles";
 function App() {
   const [combinedSVG, setCombinedSVG] = useState();
   const [bigSVGFile, setBigSVGFile] = useState(null);
-  const [smallSVGFile, setSmallSVGFile] = useState(null);
   const [SVGFileStrings, setSVGFileStrings] = useState({
-    small: null,
     big: null,
   });
 
   useEffect(() => {
     if (SVGFileStrings && SVGFileStrings.big) {
-      mergeSVGImages(
-        SVGFileStrings.big,
-        SVGFileStrings.small,
-        2562,
-        449,
-        891,
-        891,
-        3288,
-        6690
-      );
+      // invoking function for merger
+      mergeSVGImages(SVGFileStrings.big, 2562, 449, 891, 891, 3288, 6690);
     }
   }, [SVGFileStrings]);
 
   useEffect(() => {
     if (bigSVGFile) {
+      // converting svg file into svg string
+      // Here, I've converted file to string but for fetching from web need ti call from fetch API then send strig svg to merger function.
       const bigSVGReader = new FileReader();
 
       bigSVGReader.onload = function (event) {
@@ -41,21 +33,19 @@ function App() {
       };
       bigSVGReader.readAsText(bigSVGFile);
     }
-    if (smallSVGFile) {
-      const smallSVGReader = new FileReader();
+  }, [bigSVGFile]);
 
-      smallSVGReader.onload = function (event) {
-        const svgString = event.target.result;
-        console.log({ svgString });
-        setSVGFileStrings((prev) => ({ ...prev, small: svgString }));
-      };
-      smallSVGReader.readAsText(smallSVGFile);
-    }
-  }, [bigSVGFile, smallSVGFile]);
-
-  const mergeSVGImages = (_bigSVG, _smallSVG, x2, y2, h2, w2, h1, w1) => {
-    const svgString1 = _bigSVG;
-    // const svgString1 = ReactDOMServer.renderToString(_bigSVG);
+  const mergeSVGImages = (
+    stickerImage,
+    qrLeftPos,
+    qrTopPos,
+    qrHeight,
+    qrWidth,
+    stickerHeight,
+    stickerWidth
+  ) => {
+    const svgString1 = stickerImage;
+    // const svgString1 = ReactDOMServer.renderToString(stickerImage);
     const viewBox1 = svgString1.match(/\bviewBox=".*?"/);
     const modifiedContents1 = svgString1
       .replace(/<svg[^>]*>/, "")
@@ -65,14 +55,11 @@ function App() {
       .replace(/:([a-z-]+)/g, (match, p1) =>
         p1.replace(/-\w/g, (c) => c[1].toUpperCase())
       );
-    console.log({ modifiedContents1 });
 
     const splittedVB1 = viewBox1[0].split(" ");
     const aspectRatio1 =
       parseInt(splittedVB1[2], 10) / parseInt(splittedVB1[3], 10);
-    // const svgString2 = _smallSVG;
     const svgString2 = generateSVGQR();
-    // const svgString2 = ReactDOMServer.renderToString(_smallSVG);
     const viewBox2 = svgString2.match(/\bviewBox=".*?"/);
     const modifiedContents2 = svgString2
       .replace(/<svg.*?>/, "")
@@ -81,23 +68,24 @@ function App() {
     const aspectRatio2 =
       parseInt(splittedVB2[2], 10) / parseInt(splittedVB2[3], 10);
 
+    // here i have used aspect ratio for height we can we height directly as well .
     const mStrSMALL =
-      `<svg x="${x2}" y="${y2}" width="${w2}" height="${Math.round(
-        w2 / aspectRatio2
+      `<svg x="${qrLeftPos}" y="${qrTopPos}" width="${qrWidth}" height="${Math.round(
+        qrWidth / aspectRatio2
       )}" ${viewBox2[0]}>` +
       modifiedContents2 +
       `</svg>`;
 
     const mStrBIG =
-      `<svg width="${w1}" height="${Math.round(w1 / aspectRatio1)}" ${
-        viewBox1[0]
-      }>` +
+      `<svg width="${stickerWidth}" height="${Math.round(
+        stickerWidth / aspectRatio1
+      )}" ${viewBox1[0]}>` +
       modifiedContents1 +
       `</svg>`;
 
     const combinedSVG =
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${w1}" height="${Math.round(
-        w1 / aspectRatio1
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${stickerWidth}" height="${Math.round(
+        stickerWidth / aspectRatio1
       )}" >` +
       mStrBIG +
       mStrSMALL +
@@ -106,8 +94,10 @@ function App() {
   };
 
   const generateSVGQR = () => {
+    // https://www.npmjs.com/package/qrcode-svg
+    // QRCODE package used
     var qrcode = new QRCode({
-      content: "http://github.com/",
+      content: "http://localhost:3000/qr/64ca2a55a438a2bb8da4a99f",
       padding: 0,
       width: 256,
       height: 256,
@@ -133,6 +123,8 @@ function App() {
     // Create a Blob from the SVG string
     const blob = new Blob([svgString], { type: "image/svg+xml" });
     console.log({ blob });
+    // this blob is used to store SVG images or directly svg string can be used. but for us its better to use svg string
+
     // Create a URL for the Blob
     const url = URL.createObjectURL(blob);
 
@@ -170,16 +162,7 @@ function App() {
           }}
         />
       </label>
-      <label>
-        SVG small
-        <input
-          type="file"
-          accept="image/svg+xml"
-          onChange={(e) => {
-            setSmallSVGFile(e.target.files[0]);
-          }}
-        />
-      </label>
+
       <button onClick={() => downloadSvg(combinedSVG)}>download</button>
 
       <div
